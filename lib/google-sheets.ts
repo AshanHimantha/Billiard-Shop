@@ -77,7 +77,37 @@ class GoogleSheetsService {
         iat: now,
       }
 
-      const privateKey = this.serviceAccountKey.replace(/\\n/g, '\n')
+      // Clean and format the private key properly
+      let privateKey = this.serviceAccountKey.trim()
+      
+      // Remove surrounding quotes if present (handles both single and double quotes)
+      if ((privateKey.startsWith('"') && privateKey.endsWith('"')) || 
+          (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
+        privateKey = privateKey.slice(1, -1)
+      }
+      
+      // Replace escaped newlines with actual newlines
+      privateKey = privateKey.replace(/\\n/g, '\n')
+      
+      // Remove any extra whitespace or carriage returns
+      privateKey = privateKey.replace(/\r/g, '')
+      
+      // Debug logging (remove in production)
+      console.log('Private key length:', privateKey.length)
+      console.log('Private key starts with:', privateKey.substring(0, 30))
+      console.log('Private key ends with:', privateKey.substring(privateKey.length - 30))
+      
+      // Ensure the key starts and ends with proper markers
+      if (!privateKey.startsWith('-----BEGIN PRIVATE KEY-----')) {
+        console.error('Private key does not start with BEGIN marker. First 100 chars:', privateKey.substring(0, 100))
+        throw new Error('Invalid private key format: missing BEGIN marker')
+      }
+      if (!privateKey.endsWith('-----END PRIVATE KEY-----')) {
+        console.error('Private key does not end with END marker. Last 100 chars:', privateKey.substring(privateKey.length - 100))
+        throw new Error('Invalid private key format: missing END marker')
+      }
+      
+      console.log('Private key format check passed')
       const token = jwt.sign(payload, privateKey, { algorithm: 'RS256' })
 
       const response = await fetch('https://oauth2.googleapis.com/token', {
